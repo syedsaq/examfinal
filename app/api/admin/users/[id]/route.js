@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import User from "@/models/User";
-import requireAdmin from "@/lib/requireAdmin";
+import requireAuth from "@/lib/requireAuth";
 
 export async function DELETE(req, { params }) {
-  try {
-    await connectDB();
-    await requireAdmin(req);
+  await connectDB();
+  const { user, error, status } = await requireAuth(req);
 
-    await User.findByIdAndDelete(params.id);
-    return NextResponse.json({ success: true, message: "User deleted" });
-  } catch (error) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
-  }
+  if (error) return NextResponse.json({ message: error }, { status });
+  if (user.role !== "admin")
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
+
+  await User.findByIdAndDelete(params.id);
+  return NextResponse.json({ success: true, message: "User deleted" });
 }

@@ -1,60 +1,79 @@
-// app/login/page.js
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [msg, setMsg] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  function onChange(e) {
-    setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
-  }
-
-  async function submit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    setLoading(true);
-    setMsg("");
+    setError("");
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ email, password }),
       });
+
       const data = await res.json();
-      if (!res.ok) {
-        setMsg(data.error || "Login failed");
+
+      console.log("🔹 Login response:", data);
+
+      if (!res.ok || !data.success) {
+        setError(data.message || "Login failed");
+        return;
+      }
+
+      // Store user & token
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      console.log(data.token);
+      // ✅ Role-based redirection
+      if (data.user.role === "admin") {
+        console.log("✅ Redirecting to admin...");
+        router.push("/admin");
       } else {
-        // save token in localStorage (for this simple demo)
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        setMsg("Login successful — redirecting to dashboard...");
-        setTimeout(() => router.push("/dashboard"), 800);
+        console.log("✅ Redirecting to dashboard...");
+        router.push("/dashboard");
       }
     } catch (err) {
-      console.error(err);
-      setMsg("Server error");
-    } finally {
-      setLoading(false);
+      console.error("Login error:", err);
+      setError("Unexpected error occurred");
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6">
-      <div className="w-full max-w-md bg-[#1C2541]/60 p-10 rounded-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+      <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded-lg w-full max-w-md">
         <h2 className="text-2xl font-bold mb-4">Login</h2>
-        <form onSubmit={submit} className="space-y-4">
-          <input name="email" value={form.email} onChange={onChange} placeholder="Email" className="w-full p-3 rounded bg-[#0B132B]/40" required />
-          <input name="password" value={form.password} onChange={onChange} type="password" placeholder="Password" className="w-full p-3 rounded bg-[#0B132B]/40" required />
-          <button disabled={loading} className="w-full py-3 bg-yellow-400 text-black rounded">
-            {loading ? "Logging in..." : "Login"}
-          </button>
-        </form>
-        {msg && <p className="mt-4 text-yellow-300">{msg}</p>}
-      </div>
+        {error && <p className="text-red-400 mb-3">{error}</p>}
+
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full mb-3 p-2 rounded bg-gray-700"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          className="w-full mb-3 p-2 rounded bg-gray-700"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 w-full py-2 rounded">
+          Login
+        </button>
+      </form>
     </div>
   );
 }

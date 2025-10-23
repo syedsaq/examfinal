@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
-import requireAdmin from "@/lib/requireAdmin";
 import Item from "@/models/Item";
+import requireAuth from "@/lib/requireAuth";
 
 export async function GET(req) {
-  try {
-    await connectDB();
-    await requireAdmin(req);
+  await connectDB();
+  const { user, error, status } = await requireAuth(req);
 
-    const items = await Item.find()
-      .populate("user", "fullName email")
-      .sort({ createdAt: -1 });
+  if (error) return NextResponse.json({ message: error }, { status });
+  if (user.role !== "admin")
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 });
 
-    return NextResponse.json({ success: true, data: items });
-  } catch (error) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
-  }
+  const items = await Item.find().populate("user", "fullName email");
+  return NextResponse.json({ success: true, data: items });
 }

@@ -7,31 +7,42 @@ import { signJwt } from "@/lib/auth";
 
 export async function POST(req) {
   try {
-    const body = await req.json();
-    const { email, password } = body;
+    const { email, password } = await req.json();
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Missing email or password" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Missing credentials" }, { status: 400 });
     }
 
     await connectDB();
-
     const user = await User.findOne({ email });
     if (!user) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+      return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 });
     }
 
-    const ok = await bcrypt.compare(password, user.password);
-    if (!ok) return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return NextResponse.json({ success: false, message: "Invalid credentials" }, { status: 401 });
+    }
 
-    // create token payload (avoid sensitive info)
-    const token = await signJwt({ sub: user._id.toString(), role: user.role, name: user.fullName }, 60 * 60 * 8); // 8h
+    const token = await signJwt(
+      { sub: user._id.toString(), role: user.role, name: user.fullName },
+      60 * 60 * 8 // 8 hours
+    );
 
-    const safeUser = { id: user._id.toString(), fullName: user.fullName, email: user.email, role: user.role };
+    const safeUser = {
+      id: user._id.toString(),
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+    };
 
-    return NextResponse.json({ message: "Login successful", token, user: safeUser });
-  } catch (err) {
-    console.error("Login error:", err);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      token,
+      user: safeUser,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
 }

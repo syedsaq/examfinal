@@ -1,20 +1,15 @@
-import connectDB from "@/lib/db";
+import { NextResponse } from "next/server";
 import requireAuth from "@/lib/requireAuth";
+import connectDB from "@/lib/db";
 import User from "@/models/User";
 
 export async function GET(req) {
-  await connectDB();
-  const auth = await requireAuth(req);
-  if (auth.error) return Response.json({ message: auth.error }, { status: auth.status });
-  return Response.json({ user: auth.user });
-}
-
-export async function PUT(req) {
-  await connectDB();
-  const auth = await requireAuth(req);
-  if (auth.error) return Response.json({ message: auth.error }, { status: auth.status });
-
-  const { name, email } = await req.json();
-  const updated = await User.findByIdAndUpdate(auth.user._id, { name, email }, { new: true });
-  return Response.json({ user: updated, message: "Profile updated" });
+  try {
+    await connectDB();
+    const { user } = await requireAuth(req);
+    const dbUser = await User.findById(user._id).select("-password");
+    return NextResponse.json({ success: true, data: dbUser });
+  } catch (err) {
+    return NextResponse.json({ success: false, message: err.message }, { status: 400 });
+  }
 }

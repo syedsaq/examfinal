@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-
+import Comments from "../components/Comments";
 export default function DashboardPage() {
   const [items, setItems] = useState([]);
   const [title, setTitle] = useState("");
@@ -76,6 +76,8 @@ export default function DashboardPage() {
               <small className="text-gray-400">
                 {new Date(it.createdAt).toLocaleString()}
               </small>
+               {/* Comments Section */}
+             <Comments itemId={it._id} />
             </div>
           ))
         )}
